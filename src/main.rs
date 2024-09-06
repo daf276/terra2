@@ -5,11 +5,13 @@ use crate::game::ai::search_best_move;
 use crate::game::game_state::Status::{Loss, Running, Win};
 use crate::game::game_state::{Action, GameState};
 use rustc_hash::FxHashMap;
+use std::collections::HashMap;
 use std::io;
-use std::sync::{Arc, Mutex};
 use std::time::Instant;
 
 pub mod game;
+
+//static mut transposition_table: Option<FxHashMap<u64, i16>> = None;
 
 fn main() {
     /*//let file = File::open("saved.json").unwrap();
@@ -56,18 +58,20 @@ fn main() {
         println!("{}. {:?}", i, game_state.legal_actions[i])
     }
 
-    while input_string.trim() != "x" && game_state.status == Running {
-        let now = Instant::now();
-        let transposition_table = Arc::new(Mutex::new(FxHashMap::default()));
-        let (eval, best_move) = search_best_move(5, &game_state, Arc::clone(&transposition_table));
-        println!("Best move: {best_move:?}, Eval: {eval:?}");
-        let elapsed = now.elapsed();
-        println!("Elapsed: {:.2?}", elapsed);
-        let action = parse_input(&game_state, &mut input_string);
-        game_state.advance(action);
-        print_tiles(&game_state);
-        print_resources(&game_state);
-        print_legal_actions(&game_state);
+    unsafe {
+        while input_string.trim() != "x" && game_state.status == Running {
+            let now = Instant::now();
+            //transposition_table = Some(FxHashMap::default());
+            let (eval, best_move) = search_best_move(5, &game_state);
+            println!("Best move: {best_move:?}, Eval: {eval:?}");
+            let elapsed = now.elapsed();
+            println!("Elapsed: {:.2?}", elapsed);
+            let action = parse_input(&game_state, &mut input_string);
+            game_state.advance(action);
+            print_tiles(&game_state);
+            print_resources(&game_state);
+            print_legal_actions(&game_state);
+        }
     }
 
     if game_state.status == Win {

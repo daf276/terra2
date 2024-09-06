@@ -1,12 +1,12 @@
 use crate::game::buildings::Building;
 use crate::game::game_state::Action::BuildInfrastructure;
 use crate::game::game_state::Status::{Loss, Win};
-use crate::game::game_state::{find_legal_actions, Action, GameState};
+use crate::game::game_state::{Action, GameState};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHasher};
 use std::cmp::min;
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, Mutex};
+//use crate::transposition_table;
 
 pub fn evaluate_gamestate(state: &GameState) -> i16 {
     match state {
@@ -19,23 +19,46 @@ pub fn evaluate_gamestate(state: &GameState) -> i16 {
         }
     }
 }
-pub fn search_best_move(
-    depth: u16,
-    state: &GameState,
-    transposition_table: Arc<Mutex<FxHashMap<u64, i16>>>,
-) -> (i16, Action) {
+pub fn search_best_move(depth: u16, state: &GameState) -> (i16, Action) {
+    let mut actions: &Vec<Action> = &state
+        .legal_actions
+        .clone()
+        .into_iter()
+        .filter(|&a| match a {
+            BuildInfrastructure(_, _) => false,
+            _ => true,
+        })
+        .collect();
+    if actions.is_empty() {
+        actions = &state.legal_actions;
+    }
+
+    let max_eval = actions
+        .iter()
+        .map(|action| unsafe {
+            let mut new_state = state.clone();
+            new_state.advance(*action);
+            let eval = search_best_move_recursive(depth - 1, &new_state);
+            (eval, action.clone())
+        })
+        .max_by(|(eval, _), (eval2, _)| eval.cmp(eval2))
+        .unwrap_or((-1000, Action::Terraform(420)));
+
+    max_eval
+}
+
+pub fn search_best_move_recursive(depth: u16, state: &GameState) -> i16 {
     if depth == 0 {
-        return (evaluate_gamestate(state), Action::Terraform(420));
+        return evaluate_gamestate(state);
     }
 
     // Check if the evaluation is already cached
-    let state_hash = hash_state(state);
-    {
-        let table = transposition_table.lock().unwrap();
-        if let Some(&cached_eval) = table.get(&state_hash) {
-            return (cached_eval, Action::Terraform(420));
-        }
-    }
+    /*let state_hash = hash_state(state);
+    if let Some(table) = unsafe { transposition_table.as_mut() } {
+        table.get(&state_hash);
+    } else {
+        unreachable!()
+    }*/
 
     let mut actions: &Vec<Action> = &state
         .legal_actions
@@ -49,21 +72,22 @@ pub fn search_best_move(
     if actions.is_empty() {
         actions = &state.legal_actions;
     }
+
     let max_eval = actions
-        .par_iter()
+        .iter()
         .map(|action| {
             let mut new_state = state.clone();
             new_state.advance(*action);
-            let (eval, _) = search_best_move(depth - 1, &new_state, Arc::clone(&transposition_table));
-            (eval, action.clone())
+            search_best_move_recursive(depth - 1, &new_state)
         })
-        .max_by(|(eval, _), (eval2, _)| eval.cmp(eval2))
-        .unwrap_or((-1000, Action::Terraform(420)));
+        .max()
+        .unwrap_or(-1000);
 
-    {
-        let mut table = transposition_table.lock().unwrap();
-        table.insert(state_hash, max_eval.0); // Cache the evaluation
-    }
+    /*if let Some(table) = unsafe { transposition_table.as_mut() } {
+        table.insert(state_hash, max_eval);
+    } else {
+        unreachable!()
+    }*/
     max_eval
 }
 
@@ -99,9 +123,9 @@ mod tests {
         let state = GameState::initialize();
 
         b.iter(|| {
-            test::black_box({
-                let transposition_table = Arc::new(Mutex::new(FxHashMap::default()));
-                let (eval, best_move) = search_best_move(5, &state.clone(), Arc::clone(&transposition_table));
+            test::black_box(unsafe {
+                transposition_table = Some(FxHashMap::default());
+                let (eval, best_move) = search_best_move(5, &state.clone());
             });
         });
     }
