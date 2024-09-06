@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::ops::AddAssign;
 
-#[derive(Copy, Clone, Hash, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Hash, PartialEq, Debug, Serialize, Deserialize, Eq)]
 pub struct Resources {
     pub(crate) instant_co2: i16,
     pub(crate) tech_economy: i16,

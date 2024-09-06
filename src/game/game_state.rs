@@ -16,10 +16,9 @@ use Season::{Autumn, Summer, Winter};
 
 const MAP_SIZE: usize = 13;
 
-#[derive(Clone, Hash, PartialEq, Debug, Serialize, Deserialize)]
+#[derive(Clone, Hash, PartialEq, Debug, Serialize, Deserialize, Eq)]
 pub struct GameState {
     pub tiles: [Tile; MAP_SIZE],
-    pub usable_tiles: [bool; MAP_SIZE],
     pub resources: Resources,
     pub doom_timer: u8,
     pub season: Season,
@@ -27,7 +26,7 @@ pub struct GameState {
     pub status: Status,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, PartialEq, Hash, Serialize, Deserialize, Eq)]
 pub enum Status {
     Running,
     Win,
@@ -40,38 +39,13 @@ pub enum Action {
     Terraform(usize),
 }
 
-#[derive(Copy, Clone, Debug, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Hash, PartialEq, Serialize, Deserialize, Eq)]
 #[repr(u8)]
 pub enum Season {
     Spring,
     Summer,
     Autumn,
     Winter,
-}
-
-impl Eq for GameState {}
-
-impl State for GameState {
-    type A = Action;
-
-    fn reward(&self) -> f64 {
-        if self.legal_actions.is_empty() {
-            return -1000f64;
-        };
-        match self {
-            GameState { status: Win, .. } => 1000f64,
-            GameState { status: Loss, .. } => -1000f64,
-            _ => {
-                min(15, self.resources.education_culture) as f64
-                    + min(15, self.resources.tech_economy) as f64
-                    + min(15, self.resources.sustainability) as f64
-                //- (0.5 * self.resources.instant_co2 as f64)
-            }
-        }
-    }
-    fn actions(&self) -> Vec<Action> {
-        self.legal_actions.clone()
-    }
 }
 
 impl GameState {
@@ -92,16 +66,13 @@ impl GameState {
             number_left -= 1;
             tiles[i] = Tile::empty(landscape);
         }
-
-        let mut usable_tiles = [false; 13];
-        usable_tiles[6] = true;
+        tiles[6].usable = true;
 
         GameState {
             tiles,
-            usable_tiles,
             resources: Resources::new(0, 0, 0, 0, 0),
             doom_timer: 0,
-            legal_actions: find_legal_actions(tiles, usable_tiles, 0),
+            legal_actions: find_legal_actions(&tiles, 0),
             season: Spring,
             status: Running,
         }
@@ -117,7 +88,7 @@ impl GameState {
         self.check_loss_condition();
         self.check_win_condition();
         self.advance_season();
-        self.legal_actions = find_legal_actions(self.tiles, self.usable_tiles, self.resources.education_culture);
+        self.legal_actions = find_legal_actions(&self.tiles, self.resources.education_culture);
     }
 
     fn build(&mut self, building: Building, tile_to_build_on: usize) {
@@ -134,7 +105,7 @@ impl GameState {
     fn build_infrastructure(&mut self, tile_from: usize, tile_to: usize) {
         self.tiles[tile_from].connect(tile_to);
         self.tiles[tile_to].connect(tile_from);
-        self.usable_tiles[tile_to] = true;
+        self.tiles[tile_to].usable = true;
         self.resources += Resources::new(2, 0, -3, 0, 0);
     }
 
@@ -170,29 +141,26 @@ impl GameState {
     }
 }
 
-pub fn find_legal_actions(tiles: [Tile; MAP_SIZE], usable_tiles: [bool; MAP_SIZE], science: i16) -> Vec<Action> {
+pub fn find_legal_actions(tiles: &[Tile; MAP_SIZE], science: i16) -> Vec<Action> {
     let mut actions = Vec::new();
-    for (index, &usable) in usable_tiles.iter().enumerate() {
-        if usable {
-            // Check for terraforming actions
-            if tiles[index].landscape != Plains && tiles[index].landscape != Ocean {
-                actions.push(Terraform(index));
-            }
 
-            // Check for infrastructure actions
-            for &possible in &POSSIBLE_CONNECTIONS[index] {
-                if filter_actual_connections(tiles, possible) {
-                    if let BuildInfrastructure(from, to) = possible {
-                        actions.push(BuildInfrastructure(from, to));
-                    }
-                }
-            }
+    for (index, &tile) in tiles.iter().enumerate().filter(|(_, t)| t.usable) {
+        // Check for terraforming actions
+        if tiles[index].landscape != Plains && tiles[index].landscape != Ocean {
+            actions.push(Terraform(index));
+        }
 
-            // Check for build actions
-            for building in Building::iter() {
-                if building.can_build_on_tile(tiles[index]) && building.has_enough_science(science) {
-                    actions.push(Build(building, index));
-                }
+        // Check for infrastructure actions
+        for &possible in &POSSIBLE_CONNECTIONS[index] {
+            if filter_actual_connections(tiles, possible) {
+                actions.push(possible);
+            }
+        }
+
+        // Check for build actions
+        for building in Building::iter() {
+            if building.can_build_on_tile(&tiles[index]) && building.has_enough_science(science) {
+                actions.push(Build(building, index));
             }
         }
     }
@@ -223,49 +191,30 @@ mod tests {
         let state = GameState::initialize();
 
         b.iter(|| {
-            test::black_box(find_legal_actions(
-                state.tiles,
-                state.usable_tiles,
-                state.resources.tech_economy,
-            ));
+            test::black_box(find_legal_actions(&state.tiles, state.resources.tech_economy));
         });
     }
 
     #[bench]
     fn bench_advance_build(b: &mut Bencher) {
         let state = GameState::initialize();
+        let first_build_action = *state.legal_actions.iter().find(|&&a| matches!(a, Build(_, _))).unwrap();
 
-        let build_actions: Vec<&Action> = state
-            .legal_actions
-            .iter()
-            .filter(|&&a| match a {
-                Build(_, _) => true,
-                _ => false,
-            })
-            .collect();
-        let first_build_action = **build_actions.first().unwrap();
-
-        b.iter(|| {
-            test::black_box(state.clone().advance(first_build_action));
-        });
+        b.iter(|| test::black_box(state.clone().advance(first_build_action)));
     }
 
     #[bench]
     fn bench_advance_build_connection(b: &mut Bencher) {
         let state = GameState::initialize();
 
-        let build_actions: Vec<&Action> = state
+        let first_action = *state
             .legal_actions
             .iter()
-            .filter(|&&a| match a {
-                BuildInfrastructure(_, _) => true,
-                _ => false,
-            })
-            .collect();
-        let first_build_connect_action = **build_actions.first().unwrap();
+            .find(|&&a| matches!(a, BuildInfrastructure(_, _)))
+            .unwrap();
 
         b.iter(|| {
-            test::black_box(state.clone().advance(first_build_connect_action));
+            test::black_box(state.clone().advance(first_action));
         });
     }
 

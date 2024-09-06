@@ -1,7 +1,7 @@
 use crate::game::buildings::Building;
 use crate::game::game_state::Action::BuildInfrastructure;
 use crate::game::game_state::Status::{Loss, Win};
-use crate::game::game_state::{Action, GameState};
+use crate::game::game_state::{find_legal_actions, Action, GameState};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHasher};
 use std::cmp::min;
@@ -69,7 +69,12 @@ pub fn search_best_move(
 
 fn hash_state(state: &GameState) -> u64 {
     let mut hasher = FxHasher::default();
-    state.usable_tiles.hash(&mut hasher);
+    state
+        .tiles
+        .iter()
+        .map(|t| t.usable)
+        .collect::<Vec<bool>>()
+        .hash(&mut hasher);
     state
         .tiles
         .iter()
@@ -80,4 +85,24 @@ fn hash_state(state: &GameState) -> u64 {
     state.season.hash(&mut hasher);
     state.doom_timer.hash(&mut hasher);
     hasher.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+
+    use test::Bencher;
+
+    use super::*;
+    #[bench]
+    fn bench_search_best_move(b: &mut Bencher) {
+        let state = GameState::initialize();
+
+        b.iter(|| {
+            test::black_box({
+                let transposition_table = Arc::new(Mutex::new(FxHashMap::default()));
+                let (eval, best_move) = search_best_move(5, &state.clone(), Arc::clone(&transposition_table));
+            });
+        });
+    }
 }

@@ -1,5 +1,5 @@
 use crate::game::buildings::Building::{
-    CoalPowerPlant, EnvironmentalProtectionArea, Livestock, OffshoreTurbines, River, SolarPark, Trees, Zoo,
+    CoalPowerPlant, Empty, EnvironmentalProtectionArea, Livestock, OffshoreTurbines, River, SolarPark, Trees, Zoo,
 };
 use crate::game::resources::Resources;
 use crate::game::tile::{Landscape, Tile};
@@ -54,35 +54,32 @@ impl Building {
         }
     }
 
-    pub fn can_build_on_tile(self, tile: Tile) -> bool {
-        let spaces = tile.spaces;
-        if spaces.contains(&self) {
+    pub fn can_build_on_tile(self, tile: &Tile) -> bool {
+        if self == Empty {
+            return false;
+        }
+        if tile.spaces.contains(&self) {
             return false;
         };
-        if tile.spaces_left < 3 && self == EnvironmentalProtectionArea {
-            return false;
-        };
-        if tile.spaces_left < 2 && self == NationalPark {
-            return false;
-        };
-        if tile.spaces_left < 1 {
-            return false;
-        };
-        match tile.landscape {
-            Landscape::Plains => self != OffshoreTurbines,
-            Landscape::Ocean => self == OffshoreTurbines,
-            Landscape::Mountain => self == CoalPowerPlant || self == Livestock || self == River || self == Trees,
-            Landscape::Swamp => self == EnvironmentalProtectionArea,
-            Landscape::Desert => self == SolarPark || self == EnvironmentalProtectionArea,
-            Landscape::Forest => self == River || self == Trees || self == Zoo,
+        match tile.spaces_left {
+            2 if self == EnvironmentalProtectionArea => false,
+            1 if self == NationalPark || self == EnvironmentalProtectionArea => false,
+            0 => false,
+            _ => match tile.landscape {
+                Landscape::Plains => self != OffshoreTurbines,
+                Landscape::Ocean => self == OffshoreTurbines,
+                Landscape::Mountain => matches!(self, CoalPowerPlant | Livestock | River | Trees),
+                Landscape::Swamp => self == EnvironmentalProtectionArea,
+                Landscape::Desert => matches!(self, SolarPark | EnvironmentalProtectionArea),
+                Landscape::Forest => matches!(self, River | Trees | Zoo),
+            },
         }
     }
 
     pub fn has_enough_science(self, science: i16) -> bool {
         match self {
-            SolarPark => science >= 10,
+            SolarPark | University => science >= 10,
             OffshoreTurbines => science >= 15,
-            University => science >= 10,
             _ => true,
         }
     }

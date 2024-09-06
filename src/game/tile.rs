@@ -66,6 +66,7 @@ pub struct Tile {
     pub connections: [bool; 13],
     pub landscape: Landscape,
     pub spaces_left: u8,
+    pub usable: bool,
 }
 #[derive(Eq, Hash, PartialEq, Copy, Clone, Debug, Serialize, Deserialize)]
 #[repr(u8)]
@@ -84,6 +85,7 @@ impl Tile {
             landscape,
             spaces: [Empty; 3],
             spaces_left: 3,
+            usable: false,
             connections: [false; 13],
         }
     }
@@ -118,10 +120,9 @@ impl Tile {
         self.landscape = Plains;
     }
 }
-
-pub fn filter_actual_connections(tiles: [Tile; 13], possible_connection: Action) -> bool {
+pub fn filter_actual_connections(tiles: &[Tile; 13], possible_connection: Action) -> bool {
     match possible_connection {
-        BuildInfrastructure(from, to) => !tiles[from].connections[to],
+        BuildInfrastructure(from, to) => !tiles[from].connections[to] && !tiles[to].usable,
         _ => false,
     }
 }

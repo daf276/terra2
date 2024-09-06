@@ -44,7 +44,6 @@ fn main() {
             i.landscape, spaces, i.connections
         )
     });
-    println!("Usable Tiles: {:?}", &game_state.usable_tiles,);
     println!(
         "Co2: {}, Tech/Econ: {}, Sustainability: {}, Edu/Cult: {}, Co2 per Year: {}",
         &game_state.resources.instant_co2,
@@ -60,7 +59,7 @@ fn main() {
     while input_string.trim() != "x" && game_state.status == Running {
         let now = Instant::now();
         let transposition_table = Arc::new(Mutex::new(FxHashMap::default()));
-        let (eval, best_move) = search_best_move(8, &game_state, Arc::clone(&transposition_table));
+        let (eval, best_move) = search_best_move(5, &game_state, Arc::clone(&transposition_table));
         println!("Best move: {best_move:?}, Eval: {eval:?}");
         let elapsed = now.elapsed();
         println!("Elapsed: {:.2?}", elapsed);
@@ -96,7 +95,6 @@ fn print_tiles(game_state: &GameState) {
             i.landscape, spaces, i.connections
         )
     });
-    println!("Usable Tiles: {:?}", &game_state.usable_tiles,);
 }
 
 fn print_resources(game_state: &GameState) {
