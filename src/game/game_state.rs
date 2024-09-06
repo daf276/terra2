@@ -212,6 +212,7 @@ fn create_tileset() -> HashMap<Landscape, i32> {
 #[cfg(test)]
 mod tests {
     extern crate test;
+
     use test::Bencher;
 
     use super::*;
@@ -222,5 +223,26 @@ mod tests {
         b.iter(|| {
             test::black_box(find_legal_actions(state.tiles, state.usable_tiles, state.resources.tech_economy));
         });
+    }
+
+    #[bench]
+    fn bench_advance_build(b: &mut Bencher) {
+        let state = GameState::initialize();
+
+        let build_actions: Vec<&Action> = state.legal_actions.iter().filter(|&&a| match a {
+            Build(_, _) => true,
+            _ => false,
+        }).collect();
+        let first_build_action = **build_actions.first().unwrap();
+
+        b.iter(|| {
+            test::black_box(state.clone().advance(first_build_action));
+        });
+    }
+
+    #[bench]
+    fn bench_gamestate_clone(b: &mut test::Bencher) {
+        let state = GameState::initialize();
+        b.iter(|| test::black_box(state.clone()))
     }
 }
