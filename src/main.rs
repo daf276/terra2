@@ -1,5 +1,5 @@
 #![feature(trivial_bounds)]
-#![feature(slice_flatten)]
+#![feature(test)]
 
 use crate::game::ai::search_best_move;
 use crate::game::game_state::Status::{Loss, Running, Win};
@@ -61,7 +61,7 @@ fn main() {
         let now = Instant::now();
         let transposition_table = Arc::new(Mutex::new(FxHashMap::default()));
         let (eval, best_move) = search_best_move(8, &game_state, Arc::clone(&transposition_table));
-        println!("Best bove: {best_move:?}, Eval: {eval:?}");
+        println!("Best move: {best_move:?}, Eval: {eval:?}");
         let elapsed = now.elapsed();
         println!("Elapsed: {:.2?}", elapsed);
         let action = parse_input(&game_state, &mut input_string);
@@ -71,10 +71,10 @@ fn main() {
         print_legal_actions(&game_state);
     }
 
-    if (game_state.status == Win) {
+    if game_state.status == Win {
         println!("You won!")
     }
-    if (game_state.status == Loss) {
+    if game_state.status == Loss {
         println!("You lose!")
     }
     println!("See you later!");

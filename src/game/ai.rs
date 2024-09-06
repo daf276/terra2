@@ -3,7 +3,7 @@ use crate::game::game_state::{Action, GameState};
 use crate::game::game_state::Status::{Loss, Win};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHasher};
-use std::cmp::{max, min};
+use std::cmp::{min};
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 use crate::game::game_state::Action::BuildInfrastructure;

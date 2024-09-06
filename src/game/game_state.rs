@@ -63,7 +63,7 @@ impl State for GameState {
                 min(15, self.resources.education_culture) as f64
                     + min(15, self.resources.tech_economy) as f64
                     + min(15, self.resources.sustainability) as f64
-                    //- (0.5 * self.resources.instant_co2 as f64)
+                //- (0.5 * self.resources.instant_co2 as f64)
             }
         }
     }
@@ -159,9 +159,9 @@ impl GameState {
     }
 
     fn check_win_condition(&mut self) {
-        if (self.resources.sustainability >= 15
+        if self.resources.sustainability >= 15
             && self.resources.education_culture >= 15
-            && self.resources.tech_economy >= 15)
+            && self.resources.tech_economy >= 15
         {
             self.status = Win;
         }
@@ -170,13 +170,11 @@ impl GameState {
 
 pub fn find_legal_actions(tiles: [Tile; MAP_SIZE], usable_tiles: [bool; MAP_SIZE], science: i16) -> Vec<Action> {
     let mut actions = Vec::new();
-    let mut action_index = 0;
     for (index, &usable) in usable_tiles.iter().enumerate() {
         if usable {
             // Check for terraforming actions
             if tiles[index].landscape != Plains && tiles[index].landscape != Ocean {
                 actions.push(Terraform(index));
-                action_index += 1;
             }
 
             // Check for infrastructure actions
@@ -184,7 +182,6 @@ pub fn find_legal_actions(tiles: [Tile; MAP_SIZE], usable_tiles: [bool; MAP_SIZE
                 if filter_actual_connections(tiles, possible) {
                     if let BuildInfrastructure(from, to) = possible {
                         actions.push(BuildInfrastructure(from, to));
-                        action_index += 1;
                     }
                 }
             }
@@ -193,7 +190,6 @@ pub fn find_legal_actions(tiles: [Tile; MAP_SIZE], usable_tiles: [bool; MAP_SIZE
             for building in Building::iter() {
                 if building.can_build_on_tile(tiles[index]) && building.has_enough_science(science) {
                     actions.push(Build(building, index));
-                    action_index += 1;
                 }
             }
         }
@@ -211,4 +207,27 @@ fn create_tileset() -> HashMap<Landscape, i32> {
     tileset.insert(Ocean, 3);
     tileset.insert(Swamp, 3);
     tileset
+}
+
+#[cfg(test)]
+mod tests {
+    extern crate test;
+    use test::Bencher;
+
+    use super::*;
+    #[bench]
+    fn bench_find_legal_actions(b: &mut Bencher) {
+        let state = GameState::initialize();
+        let mut states: Vec<GameState> = (0..1000).map(|_| state.clone()).collect();
+
+        let actions: Vec<&Action> = state.legal_actions.iter().filter(|&&a| match a {
+            Build(_, _) => true,
+            _ => false,
+        }).collect();
+        let action = **actions.first().unwrap();
+
+        b.iter(|| {
+            test::black_box((0..1000).for_each(|i| states[i].advance(action)));
+        });
+    }
 }
