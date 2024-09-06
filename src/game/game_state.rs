@@ -218,16 +218,9 @@ mod tests {
     #[bench]
     fn bench_find_legal_actions(b: &mut Bencher) {
         let state = GameState::initialize();
-        let mut states: Vec<GameState> = (0..1000).map(|_| state.clone()).collect();
-
-        let actions: Vec<&Action> = state.legal_actions.iter().filter(|&&a| match a {
-            Build(_, _) => true,
-            _ => false,
-        }).collect();
-        let action = **actions.first().unwrap();
 
         b.iter(|| {
-            test::black_box((0..1000).for_each(|i| states[i].advance(action)));
+            test::black_box(find_legal_actions(state.tiles, state.usable_tiles, state.resources.tech_economy));
         });
     }
 }
