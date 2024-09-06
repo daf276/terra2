@@ -1,9 +1,9 @@
-use serde::{Deserialize, Serialize};
 use crate::game::buildings::Building::{
     CoalPowerPlant, EnvironmentalProtectionArea, Livestock, OffshoreTurbines, River, SolarPark, Trees, Zoo,
 };
 use crate::game::resources::Resources;
 use crate::game::tile::{Landscape, Tile};
+use serde::{Deserialize, Serialize};
 use strum_macros::{EnumIter, EnumString};
 use Building::{NationalPark, University};
 

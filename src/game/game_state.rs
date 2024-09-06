@@ -1,4 +1,3 @@
-use std::cmp::min;
 use crate::game::buildings::Building;
 use crate::game::game_state::Action::{Build, Terraform};
 use crate::game::game_state::Season::Spring;
@@ -7,12 +6,13 @@ use crate::game::resources::Resources;
 use crate::game::tile::Landscape::*;
 use crate::game::tile::{filter_actual_connections, Landscape, Tile, POSSIBLE_CONNECTIONS};
 use rand::prelude::IteratorRandom;
-use std::collections::HashMap;
 use rurel::mdp::State;
+use serde::{Deserialize, Serialize};
+use std::cmp::min;
+use std::collections::HashMap;
 use strum::IntoEnumIterator;
 use Action::BuildInfrastructure;
 use Season::{Autumn, Summer, Winter};
-use serde::{Serialize, Deserialize};
 
 const MAP_SIZE: usize = 13;
 
@@ -55,7 +55,9 @@ impl State for GameState {
     type A = Action;
 
     fn reward(&self) -> f64 {
-        if self.legal_actions.is_empty() { return -1000f64; };
+        if self.legal_actions.is_empty() {
+            return -1000f64;
+        };
         match self {
             GameState { status: Win, .. } => 1000f64,
             GameState { status: Loss, .. } => -1000f64,
@@ -221,7 +223,11 @@ mod tests {
         let state = GameState::initialize();
 
         b.iter(|| {
-            test::black_box(find_legal_actions(state.tiles, state.usable_tiles, state.resources.tech_economy));
+            test::black_box(find_legal_actions(
+                state.tiles,
+                state.usable_tiles,
+                state.resources.tech_economy,
+            ));
         });
     }
 
@@ -229,14 +235,37 @@ mod tests {
     fn bench_advance_build(b: &mut Bencher) {
         let state = GameState::initialize();
 
-        let build_actions: Vec<&Action> = state.legal_actions.iter().filter(|&&a| match a {
-            Build(_, _) => true,
-            _ => false,
-        }).collect();
+        let build_actions: Vec<&Action> = state
+            .legal_actions
+            .iter()
+            .filter(|&&a| match a {
+                Build(_, _) => true,
+                _ => false,
+            })
+            .collect();
         let first_build_action = **build_actions.first().unwrap();
 
         b.iter(|| {
             test::black_box(state.clone().advance(first_build_action));
+        });
+    }
+
+    #[bench]
+    fn bench_advance_build_connection(b: &mut Bencher) {
+        let state = GameState::initialize();
+
+        let build_actions: Vec<&Action> = state
+            .legal_actions
+            .iter()
+            .filter(|&&a| match a {
+                BuildInfrastructure(_, _) => true,
+                _ => false,
+            })
+            .collect();
+        let first_build_connect_action = **build_actions.first().unwrap();
+
+        b.iter(|| {
+            test::black_box(state.clone().advance(first_build_connect_action));
         });
     }
 

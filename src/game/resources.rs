@@ -1,5 +1,5 @@
-use std::ops::AddAssign;
 use serde::{Deserialize, Serialize};
+use std::ops::AddAssign;
 
 #[derive(Copy, Clone, Hash, PartialEq, Debug, Serialize, Deserialize)]
 pub struct Resources {

@@ -1,5 +1,5 @@
-use rurel::mdp::Agent;
 use crate::game::game_state::{Action, GameState};
+use rurel::mdp::Agent;
 
 pub struct MyAgent {
     pub(crate) state: GameState,

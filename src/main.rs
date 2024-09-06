@@ -44,7 +44,7 @@ fn main() {
             i.landscape, spaces, i.connections
         )
     });
-    println!("Usable Tiles: {:?}", &game_state.usable_tiles, );
+    println!("Usable Tiles: {:?}", &game_state.usable_tiles,);
     println!(
         "Co2: {}, Tech/Econ: {}, Sustainability: {}, Edu/Cult: {}, Co2 per Year: {}",
         &game_state.resources.instant_co2,
@@ -96,7 +96,7 @@ fn print_tiles(game_state: &GameState) {
             i.landscape, spaces, i.connections
         )
     });
-    println!("Usable Tiles: {:?}", &game_state.usable_tiles, );
+    println!("Usable Tiles: {:?}", &game_state.usable_tiles,);
 }
 
 fn print_resources(game_state: &GameState) {

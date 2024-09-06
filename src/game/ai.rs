@@ -1,12 +1,12 @@
 use crate::game::buildings::Building;
-use crate::game::game_state::{Action, GameState};
+use crate::game::game_state::Action::BuildInfrastructure;
 use crate::game::game_state::Status::{Loss, Win};
+use crate::game::game_state::{Action, GameState};
 use rayon::prelude::*;
 use rustc_hash::{FxHashMap, FxHasher};
-use std::cmp::{min};
+use std::cmp::min;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
-use crate::game::game_state::Action::BuildInfrastructure;
 
 pub fn evaluate_gamestate(state: &GameState) -> i16 {
     match state {
@@ -19,7 +19,11 @@ pub fn evaluate_gamestate(state: &GameState) -> i16 {
         }
     }
 }
-pub fn search_best_move(depth: u16, state: &GameState, transposition_table: Arc<Mutex<FxHashMap<u64, i16>>>) -> (i16, Action) {
+pub fn search_best_move(
+    depth: u16,
+    state: &GameState,
+    transposition_table: Arc<Mutex<FxHashMap<u64, i16>>>,
+) -> (i16, Action) {
     if depth == 0 {
         return (evaluate_gamestate(state), Action::Terraform(420));
     }
@@ -33,10 +37,15 @@ pub fn search_best_move(depth: u16, state: &GameState, transposition_table: Arc<
         }
     }
 
-    let mut actions: &Vec<Action> = &state.legal_actions.clone().into_iter().filter(|&a| match a {
-        BuildInfrastructure(_, _) => false,
-        _ => true,
-    }).collect();
+    let mut actions: &Vec<Action> = &state
+        .legal_actions
+        .clone()
+        .into_iter()
+        .filter(|&a| match a {
+            BuildInfrastructure(_, _) => false,
+            _ => true,
+        })
+        .collect();
     if actions.is_empty() {
         actions = &state.legal_actions;
     }
